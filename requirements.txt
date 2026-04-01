@@ -3,3 +3,5 @@ scikit-learn
 numpy
 groq
 streamlit
+fastapi
+uvicorn[standard]
