@@ -27,3 +27,18 @@ class TranscriptEmbedder:
             chunks.append(chunk)
             
         return chunks
+    def embed_chunks(self, chunks: list[str]) -> list[dict]:
+        """Creates embeddings for a list of text chunks and stores them in memory."""
+        if not chunks:
+            return []
+            
+        embeddings = self.model.encode(chunks)
+        
+        stored_data = []
+        for text, emb in zip(chunks, embeddings):
+            stored_data.append({
+                "text": text,
+                "embedding": emb
+            })
+            
+        return stored_data
