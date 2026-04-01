@@ -16,4 +16,12 @@ def get_top_k(query_embedding: np.ndarray, stored_data: list[dict], top_k: int =
     """
     if not stored_data:
         return []
-        
+
+    # Extract all embeddings into a 2D numpy array
+    chunk_embeddings = np.array([item["embedding"] for item in stored_data])
+    
+    # Reshape query embedding from 1D to 2D for sklearn function (1, number_of_features)
+    query_vec = query_embedding.reshape(1, -1)
+    
+    # Compute similarity: returns shape (1, num_chunks)
+    similarities = cosine_similarity(query_vec, chunk_embeddings)[0]
