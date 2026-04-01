@@ -192,3 +192,29 @@ async def process_video(request: VideoRequest):
         if audio_path:
             cleanup(audio_path)
             print(f"[Backend] Cleaned up temp audio file.")
+
+
+@app.post("/retrieve", response_model=RetrieveResponse)
+async def retrieve(request: RetrieveRequest):
+    """
+    Retrieve the top-k most relevant chunks for a given query.
+    The Groq LLM call is handled by the Streamlit frontend.
+    """
+    if not stored_data:
+        raise HTTPException(
+            status_code=400,
+            detail="No transcript has been processed yet. Please process a transcript first.",
+        )
+
+    try:
+        query_emb = embedder.embed_query(request.query)
+        top_results = get_top_k(query_emb, stored_data, top_k=request.top_k)
+
+        return RetrieveResponse(
+            results=[
+                RetrieveResult(text=r["text"], score=r["score"])
+                for r in top_results
+            ]
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Retrieval failed: {e}")
