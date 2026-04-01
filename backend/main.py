@@ -97,3 +97,27 @@ class HealthResponse(BaseModel):
     status: str
     embeddings_loaded: bool
     num_chunks_stored: int
+
+
+# ---------------------------------------------------------------------------
+# Shared processing pipeline
+# ---------------------------------------------------------------------------
+def process_text_pipeline(text: str) -> int:
+    """
+    Core processing function — chunks text, generates embeddings, stores them.
+    This is the SINGLE shared pipeline used by both /process-text and /process-video.
+
+    Returns:
+        Number of chunks created.
+    """
+    global stored_data
+
+    if not text or not text.strip():
+        raise ValueError("Text is empty.")
+
+    chunks = embedder.chunk_text(text.strip(), sentences_per_chunk=3)
+    if not chunks:
+        raise ValueError("Could not extract meaningful sentences from the text.")
+
+    stored_data = embedder.embed_chunks(chunks)
+    return len(chunks)
