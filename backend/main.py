@@ -218,3 +218,11 @@ async def retrieve(request: RetrieveRequest):
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Retrieval failed: {e}")
+
+
+@app.post("/clear")
+async def clear_data():
+    """Clear all stored embeddings."""
+    global stored_data
+    stored_data = []
+    return {"status": "cleared"}
