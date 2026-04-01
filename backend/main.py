@@ -60,3 +60,40 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+# ---------------------------------------------------------------------------
+# Request / Response models
+# ---------------------------------------------------------------------------
+class TextRequest(BaseModel):
+    text: str
+
+
+class VideoRequest(BaseModel):
+    video_url: str
+
+
+class RetrieveRequest(BaseModel):
+    query: str
+    top_k: int = 3
+
+
+class ProcessResponse(BaseModel):
+    status: str
+    num_chunks: int
+    transcript: str | None = None
+
+
+class RetrieveResult(BaseModel):
+    text: str
+    score: float
+
+
+class RetrieveResponse(BaseModel):
+    results: list[RetrieveResult]
+
+
+class HealthResponse(BaseModel):
+    status: str
+    embeddings_loaded: bool
+    num_chunks_stored: int
