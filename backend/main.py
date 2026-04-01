@@ -121,3 +121,16 @@ def process_text_pipeline(text: str) -> int:
 
     stored_data = embedder.embed_chunks(chunks)
     return len(chunks)
+
+
+# ---------------------------------------------------------------------------
+# Endpoints
+# ---------------------------------------------------------------------------
+@app.get("/health", response_model=HealthResponse)
+async def health_check():
+    """Health check endpoint."""
+    return HealthResponse(
+        status="ok",
+        embeddings_loaded=embedder is not None,
+        num_chunks_stored=len(stored_data),
+    )
