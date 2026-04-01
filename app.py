@@ -39,9 +39,16 @@ if "api_key_valid" not in st.session_state:
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-# Set API Key automatically
-os.environ["GROQ_API_KEY"] = "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"
-st.session_state.api_key_valid = True
+# Set API Key from Streamlit Secrets or environment variable
+try:
+    os.environ["GROQ_API_KEY"] = st.secrets["GROQ_API_KEY"]
+    st.session_state.api_key_valid = True
+except (KeyError, FileNotFoundError):
+    if os.environ.get("GROQ_API_KEY"):
+        st.session_state.api_key_valid = True
+    else:
+        st.session_state.api_key_valid = False
+        st.error("⚠️ GROQ_API_KEY not found. Please set it in Streamlit Secrets or as an environment variable.")
 
 # Sidebar for App Info
 with st.sidebar:
