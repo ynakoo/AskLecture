@@ -4,7 +4,7 @@
 
 [![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://asklecture-s2npayyxbeks7nr5fcdfqr.streamlit.app/)
 ![Python](https://img.shields.io/badge/Python-3.10+-blue?logo=python&logoColor=white)
-![License](https://img.shields.io/badge/License-MIT-green)
+
 
 ---
 
@@ -122,6 +122,3 @@ The app is deployed on Streamlit Community Cloud:
 
 ---
 
-## 📄 License
-
-This project is open source under the [MIT License](LICENSE).
