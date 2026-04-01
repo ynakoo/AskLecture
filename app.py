@@ -231,3 +231,43 @@ with st.sidebar:
 # ---------------------------------------------------------------------------
 # Main Tabs
 # ---------------------------------------------------------------------------
+tab_text, tab_video, tab_chat = st.tabs(["📝 Paste Transcript", "🎬 Video URL", "💬 Ask Questions"])
+
+# ---- Tab 1: Paste Transcript ----
+with tab_text:
+    st.subheader("Paste a Transcript")
+    st.caption("Paste your lecture or video transcript below, then click Process.")
+
+    transcript = st.text_area(
+        "Transcript text:",
+        height=250,
+        placeholder="Artificial intelligence is a branch of computer science that aims to create intelligent machines...",
+        label_visibility="collapsed",
+    )
+
+    if st.button("⚡ Process & Embed Transcript", use_container_width=True, type="primary", key="btn_process_text"):
+        if not transcript.strip():
+            st.error("Please paste a valid transcript before processing.")
+        elif not backend_ok:
+            st.error("Backend is offline. Please start the FastAPI server first.")
+        else:
+            with st.spinner("Sending transcript to backend for chunking & embedding..."):
+                try:
+                    result = send_process_text(transcript.strip())
+                    num_chunks = result.get("num_chunks", 0)
+                    st.session_state.transcript_ready = True
+                    st.session_state.last_transcript = transcript.strip()
+                    st.markdown(
+                        f'<div class="success-box">✅ Successfully processed <strong>{num_chunks}</strong> '
+                        f'chunks into memory! Head to the <strong>💬 Ask Questions</strong> tab.</div>',
+                        unsafe_allow_html=True,
+                    )
+                except requests.HTTPError as e:
+                    detail = ""
+                    try:
+                        detail = e.response.json().get("detail", "")
+                    except Exception:
+                        pass
+                    st.error(f"Backend error: {detail or e}")
+                except requests.ConnectionError:
+                    st.error("Cannot reach backend. Is the FastAPI server running?")
