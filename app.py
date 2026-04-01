@@ -4,12 +4,30 @@ from groq import Groq
 from src.embedding import TranscriptEmbedder
 from src.retrieval import get_top_k
 
+# Set page config
 st.set_page_config(page_title="Semantic Video Search", page_icon="🎥", layout="wide")
 
-st.markdown("""<style>...</style>""", unsafe_allow_html=True)
+# Custom CSS for aesthetics
+st.markdown("""
+<style>
+    .stTextArea textarea {
+        background-color: #f7f9fc;
+        color: #000000;
+        caret-color: #000000;
+        border-radius: 8px;
+    }
+    .stChatInput {
+        border-radius: 20px;
+    }
+    h1 {
+        color: #1e3a8a;
+    }
+</style>
+""", unsafe_allow_html=True)
 
+# Application Heading
 st.title("🎥 Semantic Video Transcript Search")
-st.markdown("**Find answers directly from video transcripts...**")
+st.markdown("**Find answers directly from video transcripts using Groq LLaMA 3 & local embeddings.**")
 
 # Session State Initialization
 if "embedder" not in st.session_state:
@@ -28,7 +46,7 @@ st.session_state.api_key_valid = True
 # Sidebar for App Info
 with st.sidebar:
     st.header("⚙️ Configuration")
-
+        
     st.divider()
     st.markdown("""
     ### About
@@ -97,3 +115,32 @@ with tab_chat:
                     with st.spinner("Generating answer with openai/gpt-oss-120b..."):
                         client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
                         prompt = f"""You are a helpful assistant. Answer the question ONLY using the provided context. If the answer is not in the context, say 'I don't know'.
+
+Context:
+{combined_context}
+
+Question:
+{query}
+
+Answer clearly and concisely."""
+
+                        try:
+                            chat_completion = client.chat.completions.create(
+                                messages=[
+                                    {"role": "system", "content": "You are a precise and helpful assistant."},
+                                    {"role": "user", "content": prompt}
+                                ],
+                                model="openai/gpt-oss-120b",
+                            )
+                            answer = chat_completion.choices[0].message.content
+                            st.markdown(answer)
+                            
+                            # Save to chat history along with context UI
+                            st.session_state.messages.append({"role": "assistant", "content": answer, "context": top_results})
+                            
+                            with st.expander("View Retrieved Context"):
+                                for i, res in enumerate(top_results, 1):
+                                    st.write(f"**Chunk {i} (Score: {res['score']:.4f})**\n> {res['text']}")
+                                    
+                        except Exception as e:
+                            st.error(f"Error communicating with Groq API: {e}")
