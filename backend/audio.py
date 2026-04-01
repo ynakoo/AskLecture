@@ -65,3 +65,17 @@ def download_audio(video_url: str, output_dir: str | None = None) -> str:
         )
 
     return wav_path
+
+
+def cleanup(file_path: str) -> None:
+    """
+    Deletes a temporary file if it exists.
+
+    Args:
+        file_path: Absolute path to the file to delete.
+    """
+    try:
+        if file_path and os.path.exists(file_path):
+            os.remove(file_path)
+    except OSError:
+        pass  # Best-effort cleanup
