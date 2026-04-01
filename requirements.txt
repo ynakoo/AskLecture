@@ -5,3 +5,5 @@ groq
 streamlit
 fastapi
 uvicorn[standard]
+yt-dlp
+openai-whisper
