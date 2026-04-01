@@ -4,3 +4,7 @@ __pycache__/
 env/
 .env
 .streamlit/secrets.toml
+*.wav
+*.mp3
+*.m4a
+temp_audio/

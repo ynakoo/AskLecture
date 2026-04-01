@@ -1,124 +1,163 @@
-# 🎥 AskLecture — Semantic Video Transcript Search
+# 🎥 AskLecture
 
-> Ask questions about any lecture or video transcript and get precise, AI-powered answers instantly.
+**Find answers from video transcripts using Groq LLM & local embeddings.**
 
-[![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://asklecture-s2npayyxbeks7nr5fcdfqr.streamlit.app/)
-![Python](https://img.shields.io/badge/Python-3.10+-blue?logo=python&logoColor=white)
-
+AskLecture is a semantic search application that lets you ask natural language questions about video content. Paste a transcript or provide a video URL — the system will transcribe, chunk, embed, and answer using retrieval-augmented generation (RAG).
 
 ---
 
-## 📌 What is AskLecture?
+## Architecture
 
-**AskLecture** is a Retrieval-Augmented Generation (RAG) application that lets you paste any video/lecture transcript and ask natural language questions about it. It uses local sentence embeddings for semantic search and the Groq API for LLM-powered answer generation.
+```
+Streamlit Frontend (UI)
+       ↓ HTTP
+FastAPI Backend (processing)
+       ├── POST /process-text   → chunk + embed + store
+       ├── POST /process-video  → yt-dlp → Whisper → chunk + embed + store
+       ├── POST /retrieve       → semantic search over stored chunks
+       ├── POST /clear          → reset stored data
+       └── GET  /health         → health check
+       ↓
+Shared Modules:
+       ├── src/embedding.py     → SentenceTransformer embeddings
+       └── src/retrieval.py     → cosine similarity retrieval
+```
+
+## Features
+
+- **Paste Transcript** — paste any text and process it for Q&A
+- **Video URL** — provide a YouTube (or other) video URL:
+  - Audio extracted via `yt-dlp`
+  - Transcribed locally using OpenAI Whisper (`base` model)
+  - Automatically processed into the same RAG pipeline
+  - Download the generated transcript
+- **Ask Questions** — chat interface with context-aware answers via Groq LLM
+- **Clean Separation** — Streamlit handles UI, FastAPI handles all processing
 
 ---
 
-## ✨ Features
-
-- 📝 **Paste any transcript** — no file upload needed, just paste and go
-- 🔍 **Semantic search** — finds the most relevant chunks using cosine similarity
-- 🤖 **AI-powered answers** — generates concise answers using Groq's LLM (GPT-OSS-120B)
-- 💬 **Chat interface** — conversational UI with full chat history
-- 📎 **Context transparency** — view the exact retrieved chunks used for each answer
-- ⚡ **Local embeddings** — uses `all-MiniLM-L6-v2` (no external API needed for embeddings)
-- 🖥️ **CLI mode** — also available as a command-line tool
-
----
-
-## 🏗️ Architecture
+## Project Structure
 
 ```
 AskLecture/
-├── app.py                 # Streamlit web application
-├── cli.py                 # Command-line interface
-├── requirements.txt       # Python dependencies
+├── app.py                          # Streamlit frontend (UI only)
+├── cli.py                          # CLI client
+├── backend/
+│   ├── __init__.py
+│   ├── main.py                     # FastAPI application
+│   ├── audio.py                    # yt-dlp audio extraction
+│   └── whisper_transcribe.py       # Whisper transcription
 ├── src/
-│   ├── embedding.py       # Text chunking & embedding (SentenceTransformers)
-│   └── retrieval.py       # Cosine similarity search (top-k retrieval)
-└── notebooks/
-    └── rag_app.ipynb      # Jupyter notebook version
-```
-
-### How It Works
-
-```
-┌─────────────┐     ┌──────────────┐     ┌───────────────┐     ┌─────────────┐
-│  Paste       │ ──▶ │  Chunk Text  │ ──▶ │  Generate     │ ──▶ │  Store in   │
-│  Transcript  │     │  (3 sent.)   │     │  Embeddings   │     │  Memory     │
-└─────────────┘     └──────────────┘     └───────────────┘     └─────────────┘
-                                                                      │
-┌─────────────┐     ┌──────────────┐     ┌───────────────┐           │
-│  Display     │ ◀── │  Groq LLM    │ ◀── │  Retrieve     │ ◀─────────┘
-│  Answer      │     │  Generation  │     │  Top-K Chunks │
-└─────────────┘     └──────────────┘     └───────────────┘
+│   ├── embedding.py                # SentenceTransformer embeddings
+│   └── retrieval.py                # Cosine similarity retrieval
+├── requirements.txt
+├── .env.example
+└── README.md
 ```
 
 ---
 
-## 🚀 Quick Start
+## Prerequisites
 
-### Prerequisites
+- **Python 3.10+**
+- **ffmpeg** — required for audio extraction and Whisper
 
-- Python 3.10+
-- A Groq API key ([get one here](https://console.groq.com/keys))
-
-### Installation
+### Install ffmpeg
 
 ```bash
-# Clone the repository
-git clone https://github.com/ynakoo/AskLecture.git
-cd AskLecture
+# macOS
+brew install ffmpeg
 
-# Install dependencies
+# Ubuntu/Debian
+sudo apt-get update && sudo apt-get install -y ffmpeg
+
+# Windows (via Chocolatey)
+choco install ffmpeg
+```
+
+---
+
+## Setup
+
+### 1. Clone & Install Dependencies
+
+```bash
+git clone <your-repo-url>
+cd AskLecture
 pip install -r requirements.txt
 ```
 
-### Run the Streamlit App
+### 2. Configure Environment
+
+```bash
+cp .env.example .env
+# Edit .env and add your GROQ_API_KEY
+```
+
+### 3. Start the FastAPI Backend
+
+```bash
+uvicorn backend.main:app --reload --host 0.0.0.0 --port 8000
+```
+
+### 4. Start the Streamlit Frontend (in a separate terminal)
 
 ```bash
 streamlit run app.py
 ```
 
-Then open **http://localhost:8501** in your browser.
+### 5. Open the App
 
-### Run the CLI Version
-
-```bash
-python cli.py
-```
-
-Paste your transcript, type `DONE`, and start asking questions.
+Visit `http://localhost:8501` in your browser.
 
 ---
 
-## 🌐 Live Demo
+## Usage
 
-The app is deployed on Streamlit Community Cloud:
+### Option 1: Paste a Transcript
+1. Go to the **📝 Paste Transcript** tab
+2. Paste your lecture/video transcript
+3. Click **Process & Embed Transcript**
+4. Switch to **💬 Ask Questions** and chat
 
-🔗 **[asklecture-s2npayyxbeks7nr5fcdfqr.streamlit.app](https://asklecture-s2npayyxbeks7nr5fcdfqr.streamlit.app/)**
-
----
-
-## 🛠️ Tech Stack
-
-| Component       | Technology                          |
-| --------------- | ----------------------------------- |
-| **Frontend**    | Streamlit                           |
-| **Embeddings**  | SentenceTransformers (all-MiniLM-L6-v2) |
-| **Similarity**  | scikit-learn (Cosine Similarity)    |
-| **LLM**        | Groq API (GPT-OSS-120B)            |
-| **Language**    | Python 3.10+                        |
+### Option 2: Video URL
+1. Go to the **🎬 Video URL** tab
+2. Enter a YouTube or other video URL
+3. Click **Convert & Process Video**
+4. Wait for transcription (may take a few minutes)
+5. View and download the generated transcript
+6. Switch to **💬 Ask Questions** and chat
 
 ---
 
-## 📖 Usage
+## API Endpoints
 
-1. **Open the app** in your browser
-2. **Go to the "Provide Transcript" tab** and paste your lecture/video transcript
-3. **Click "Process & Embed Transcript"** to chunk and embed the text
-4. **Switch to the "Ask Questions" tab** and start chatting
-5. **Expand "View Retrieved Context"** to see which chunks were used
+| Endpoint | Method | Description |
+|---|---|---|
+| `/health` | GET | Health check + status |
+| `/process-text` | POST | Process pasted transcript text |
+| `/process-video` | POST | Download, transcribe, and process a video |
+| `/retrieve` | POST | Retrieve top-k relevant chunks for a query |
+| `/clear` | POST | Clear all stored embeddings |
 
 ---
 
+## Environment Variables
+
+| Variable | Default | Description |
+|---|---|---|
+| `GROQ_API_KEY` | — | Your Groq API key |
+| `BACKEND_URL` | `http://localhost:8000` | FastAPI backend URL |
+| `WHISPER_MODEL` | `base` | Whisper model size: tiny, base, small, medium, large |
+
+---
+
+## Tech Stack
+
+- **Frontend**: Streamlit
+- **Backend**: FastAPI + Uvicorn
+- **Transcription**: OpenAI Whisper (local)
+- **Audio Extraction**: yt-dlp + ffmpeg
+- **Embeddings**: sentence-transformers (all-MiniLM-L6-v2)
+- **LLM**: Groq (openai/gpt-oss-120b)
+- **Retrieval**: cosine similarity (scikit-learn)
