@@ -25,3 +25,17 @@ def get_top_k(query_embedding: np.ndarray, stored_data: list[dict], top_k: int =
     
     # Compute similarity: returns shape (1, num_chunks)
     similarities = cosine_similarity(query_vec, chunk_embeddings)[0]
+
+    # Get indices of the top-k highest similarity scores (argsort returns ascending)
+    # We take the last `top_k` and reverse the array to get descending order
+    top_indices = np.argsort(similarities)[::-1][:top_k]
+    
+    # Format and return the results
+    results = []
+    for idx in top_indices:
+        results.append({
+            "text": stored_data[idx]["text"],
+            "score": float(similarities[idx])
+        })
+        
+    return results
