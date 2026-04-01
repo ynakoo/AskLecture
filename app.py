@@ -52,3 +52,48 @@ with tab_upload:
                 else:
                     st.session_state.stored_data = st.session_state.embedder.embed_chunks(chunks)
                     st.success(f"✅ Successfully processed {len(chunks)} contextual chunks into memory! You can now ask questions in the next tab.")
+                    
+with tab_chat:
+    if not st.session_state.stored_data:
+        st.info("👈 Please upload and process a transcript first on the previous tab.")
+    else:
+        # Display chat history
+        for msg in st.session_state.messages:
+            with st.chat_message(msg["role"]):
+                st.markdown(msg["content"])
+                if "context" in msg:
+                    with st.expander("View Retrieved Context"):
+                        for i, res in enumerate(msg["context"], 1):
+                            st.write(f"**Chunk {i} (Score: {res['score']:.4f})**\n> {res['text']}")
+                            
+        # Chat Input
+        if query := st.chat_input("Ask a question about the video transcript..."):
+            # Append User Question
+            st.session_state.messages.append({"role": "user", "content": query})
+            with st.chat_message("user"):
+                st.markdown(query)
+                
+            # Retrieve Context
+            with st.chat_message("assistant"):
+                with st.spinner("Retrieving semantic matches..."):
+                    query_emb = st.session_state.embedder.embed_query(query)
+                    top_results = get_top_k(query_emb, st.session_state.stored_data, top_k=1)
+                    
+                if not top_results:
+                    st.warning("No relevant context found in the transcript.")
+                    context_texts = []
+                else:
+                    context_texts = [res["text"] for res in top_results]
+                    
+                combined_context = "\n\n".join(context_texts)
+                
+                # Check for Groq API
+                if not st.session_state.api_key_valid or not combined_context:
+                    if combined_context:
+                        st.warning("API key not set. Below is the retrieved context only:")
+                        for res in top_results:
+                            st.info(res['text'])
+                else:
+                    with st.spinner("Generating answer with openai/gpt-oss-120b..."):
+                        client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
+                        prompt = f"""You are a helpful assistant. Answer the question ONLY using the provided context. If the answer is not in the context, say 'I don't know'.
