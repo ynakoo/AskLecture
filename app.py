@@ -1,45 +1,127 @@
 import os
+from dotenv import load_dotenv
+
+load_dotenv()  # Load .env file automatically
+
 import streamlit as st
+import requests
 from groq import Groq
-from src.embedding import TranscriptEmbedder
-from src.retrieval import get_top_k
+
+# ---------------------------------------------------------------------------
+# Configuration
+# ---------------------------------------------------------------------------
+BACKEND_URL = os.environ.get("BACKEND_URL", "http://localhost:8000")
 
 # Set page config
-st.set_page_config(page_title="Semantic Video Search", page_icon="🎥", layout="wide")
+st.set_page_config(page_title="AskLecture — Semantic Video Search", page_icon="🎥", layout="wide")
 
-# Custom CSS for aesthetics
+# Custom CSS
 st.markdown("""
 <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+    html, body, [class*="css"] {
+        font-family: 'Inter', sans-serif;
+    }
+
     .stTextArea textarea {
         background-color: #f7f9fc;
-        color: #000000;
-        caret-color: #000000;
-        border-radius: 8px;
+        color: #0f172a;
+        caret-color: #0f172a;
+        border-radius: 10px;
+        border: 1px solid #e2e8f0;
+        font-size: 0.95rem;
     }
+
+    .stTextInput input {
+        background-color: #f7f9fc;
+        color: #0f172a;
+        border-radius: 10px;
+        border: 1px solid #e2e8f0;
+        font-size: 0.95rem;
+    }
+
     .stChatInput {
         border-radius: 20px;
     }
+
     h1 {
-        color: #1e3a8a;
+        background: linear-gradient(135deg, #1e3a8a, #7c3aed);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        font-weight: 700;
+    }
+
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 8px;
+    }
+
+    .stTabs [data-baseweb="tab"] {
+        border-radius: 8px 8px 0 0;
+        padding: 10px 20px;
+        font-weight: 600;
+    }
+
+    div[data-testid="stExpander"] {
+        background-color: #f1f5f9;
+        border-radius: 10px;
+        border: 1px solid #e2e8f0;
+    }
+
+    .success-box {
+        background: linear-gradient(135deg, #ecfdf5, #d1fae5);
+        border: 1px solid #6ee7b7;
+        border-radius: 10px;
+        padding: 16px;
+        margin: 8px 0;
+    }
+
+    .transcript-box {
+        background-color: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 10px;
+        padding: 16px;
+        max-height: 400px;
+        overflow-y: auto;
+        font-size: 0.9rem;
+        line-height: 1.6;
+    }
+
+    .status-badge {
+        display: inline-block;
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 0.8rem;
+        font-weight: 600;
+    }
+
+    .badge-connected {
+        background-color: #d1fae5;
+        color: #065f46;
+    }
+
+    .badge-disconnected {
+        background-color: #fee2e2;
+        color: #991b1b;
     }
 </style>
 """, unsafe_allow_html=True)
 
-# Application Heading
-st.title("🎥 AskLecture")
-st.markdown("**Find answers directly from video transcripts using Groq LLaMA 3 & local embeddings.**")
-
-# Session State Initialization
-if "embedder" not in st.session_state:
-    st.session_state.embedder = TranscriptEmbedder()
-if "stored_data" not in st.session_state:
-    st.session_state.stored_data = None
+# ---------------------------------------------------------------------------
+# Session State
+# ---------------------------------------------------------------------------
 if "api_key_valid" not in st.session_state:
     st.session_state.api_key_valid = False
 if "messages" not in st.session_state:
     st.session_state.messages = []
+if "transcript_ready" not in st.session_state:
+    st.session_state.transcript_ready = False
+if "last_transcript" not in st.session_state:
+    st.session_state.last_transcript = None
 
-# Set API Key from Streamlit Secrets or environment variable
+# ---------------------------------------------------------------------------
+# API Key Setup
+# ---------------------------------------------------------------------------
 try:
     os.environ["GROQ_API_KEY"] = st.secrets["GROQ_API_KEY"]
     st.session_state.api_key_valid = True
@@ -48,106 +130,104 @@ except (KeyError, FileNotFoundError):
         st.session_state.api_key_valid = True
     else:
         st.session_state.api_key_valid = False
-        st.error("⚠️ GROQ_API_KEY not found. Please set it in Streamlit Secrets or as an environment variable.")
 
-# Sidebar for App Info
+
+# ---------------------------------------------------------------------------
+# Helper Functions
+# ---------------------------------------------------------------------------
+def check_backend_health() -> bool:
+    """Check if the FastAPI backend is reachable."""
+    try:
+        resp = requests.get(f"{BACKEND_URL}/health", timeout=3)
+        return resp.status_code == 200
+    except requests.ConnectionError:
+        return False
+
+
+def send_process_text(text: str) -> dict:
+    """Send transcript text to the backend for processing."""
+    resp = requests.post(
+        f"{BACKEND_URL}/process-text",
+        json={"text": text},
+        timeout=120,
+    )
+    resp.raise_for_status()
+    return resp.json()
+
+
+def send_process_video(video_url: str) -> dict:
+    """Send video URL to the backend for transcription + processing."""
+    resp = requests.post(
+        f"{BACKEND_URL}/process-video",
+        json={"video_url": video_url},
+        timeout=600,  # Transcription can take a while
+    )
+    resp.raise_for_status()
+    return resp.json()
+
+
+def send_retrieve(query: str, top_k: int = 3) -> list[dict]:
+    """Retrieve top-k relevant chunks from the backend."""
+    resp = requests.post(
+        f"{BACKEND_URL}/retrieve",
+        json={"query": query, "top_k": top_k},
+        timeout=30,
+    )
+    resp.raise_for_status()
+    return resp.json().get("results", [])
+
+
+# ---------------------------------------------------------------------------
+# Header
+# ---------------------------------------------------------------------------
+st.title("🎥 AskLecture")
+st.markdown("**Find answers from video transcripts using Groq LLM & local embeddings. Paste text or provide a video URL.**")
+
+# ---------------------------------------------------------------------------
+# Sidebar
+# ---------------------------------------------------------------------------
 with st.sidebar:
     st.header("⚙️ Configuration")
-        
+
+    # Backend status
+    backend_ok = check_backend_health()
+    if backend_ok:
+        st.markdown('<span class="status-badge badge-connected">● Backend Connected</span>', unsafe_allow_html=True)
+    else:
+        st.markdown('<span class="status-badge badge-disconnected">● Backend Offline</span>', unsafe_allow_html=True)
+        st.error("FastAPI backend is not reachable. Start it with:\n```\nuvicorn backend.main:app --reload --port 8000\n```")
+
+    if not st.session_state.api_key_valid:
+        st.warning("⚠️ GROQ_API_KEY not found. Set it in `.env` or Streamlit Secrets.")
+
     st.divider()
+
     st.markdown("""
     ### About
-    This app reads a plain text transcript, breaks it into semantic chunks, and searches exactly for what you're asking using the `sentence-transformers` library in-memory.
+    **AskLecture** reads video transcripts — pasted or auto-generated from video URLs — 
+    breaks them into semantic chunks, and answers your questions using retrieval-augmented generation.
+
+    **Architecture:**
+    - 🖥️ **Frontend**: Streamlit  
+    - ⚡ **Backend**: FastAPI  
+    - 🎤 **Transcription**: Whisper (local)  
+    - 🧠 **LLM**: Groq  
     """)
 
-# Main UI
-tab_upload, tab_chat = st.tabs(["📝 1. Provide Transcript", "💬 2. Ask Questions"])
+    st.divider()
 
-with tab_upload:
-    transcript = st.text_area("Paste your video transcript below:", height=250, placeholder="Artificial intelligence is...")
-    
-    if st.button("Process & Embed Transcript", use_container_width=True, type="primary"):
-        if not transcript.strip():
-            st.error("Please paste a valid transcript before processing.")
-        else:
-            with st.spinner("Chunking and generating embeddings locally... (this might take a moment)"):
-                chunks = st.session_state.embedder.chunk_text(transcript.strip(), sentences_per_chunk=3)
-                if not chunks:
-                    st.error("Could not extract meaningful sentences from the transcript.")
-                else:
-                    st.session_state.stored_data = st.session_state.embedder.embed_chunks(chunks)
-                    st.success(f"✅ Successfully processed {len(chunks)} contextual chunks into memory! You can now ask questions in the next tab.")
-                    
-with tab_chat:
-    if not st.session_state.stored_data:
-        st.info("👈 Please upload and process a transcript first on the previous tab.")
-    else:
-        # Display chat history
-        for msg in st.session_state.messages:
-            with st.chat_message(msg["role"]):
-                st.markdown(msg["content"])
-                if "context" in msg:
-                    with st.expander("View Retrieved Context"):
-                        for i, res in enumerate(msg["context"], 1):
-                            st.write(f"**Chunk {i} (Score: {res['score']:.4f})**\n> {res['text']}")
-                            
-        # Chat Input
-        if query := st.chat_input("Ask a question about the video transcript..."):
-            # Append User Question
-            st.session_state.messages.append({"role": "user", "content": query})
-            with st.chat_message("user"):
-                st.markdown(query)
-                
-            # Retrieve Context
-            with st.chat_message("assistant"):
-                with st.spinner("Retrieving semantic matches..."):
-                    query_emb = st.session_state.embedder.embed_query(query)
-                    top_results = get_top_k(query_emb, st.session_state.stored_data, top_k=1)
-                    
-                if not top_results:
-                    st.warning("No relevant context found in the transcript.")
-                    context_texts = []
-                else:
-                    context_texts = [res["text"] for res in top_results]
-                    
-                combined_context = "\n\n".join(context_texts)
-                
-                # Check for Groq API
-                if not st.session_state.api_key_valid or not combined_context:
-                    if combined_context:
-                        st.warning("API key not set. Below is the retrieved context only:")
-                        for res in top_results:
-                            st.info(res['text'])
-                else:
-                    with st.spinner("Generating answer with openai/gpt-oss-120b..."):
-                        client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
-                        prompt = f"""You are a helpful assistant. Answer the question ONLY using the provided context. If the answer is not in the context, say 'I don't know'.
+    # Clear data button
+    if st.button("🗑️ Clear All Data", use_container_width=True):
+        try:
+            requests.post(f"{BACKEND_URL}/clear", timeout=5)
+            st.session_state.messages = []
+            st.session_state.transcript_ready = False
+            st.session_state.last_transcript = None
+            st.success("Data cleared.")
+            st.rerun()
+        except Exception:
+            st.error("Could not clear backend data.")
 
-Context:
-{combined_context}
-
-Question:
-{query}
-
-Answer clearly and concisely."""
-
-                        try:
-                            chat_completion = client.chat.completions.create(
-                                messages=[
-                                    {"role": "system", "content": "You are a precise and helpful assistant."},
-                                    {"role": "user", "content": prompt}
-                                ],
-                                model="openai/gpt-oss-120b",
-                            )
-                            answer = chat_completion.choices[0].message.content
-                            st.markdown(answer)
-                            
-                            # Save to chat history along with context UI
-                            st.session_state.messages.append({"role": "assistant", "content": answer, "context": top_results})
-                            
-                            with st.expander("View Retrieved Context"):
-                                for i, res in enumerate(top_results, 1):
-                                    st.write(f"**Chunk {i} (Score: {res['score']:.4f})**\n> {res['text']}")
-                                    
-                        except Exception as e:
-                            st.error(f"Error communicating with Groq API: {e}")
+# ---------------------------------------------------------------------------
+# Main Tabs
+# ---------------------------------------------------------------------------
