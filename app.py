@@ -271,3 +271,147 @@ with tab_text:
                     st.error(f"Backend error: {detail or e}")
                 except requests.ConnectionError:
                     st.error("Cannot reach backend. Is the FastAPI server running?")
+
+# ---- Tab 2: Video URL ----
+with tab_video:
+    st.subheader("Transcribe from Video URL")
+    st.caption("Provide a YouTube or other video URL. The backend will extract audio and transcribe it using Whisper.")
+
+    video_url = st.text_input(
+        "Video URL:",
+        placeholder="https://www.youtube.com/watch?v=...",
+        label_visibility="collapsed",
+    )
+
+    if st.button("🎬 Convert & Process Video", use_container_width=True, type="primary", key="btn_process_video"):
+        if not video_url.strip():
+            st.error("Please enter a valid video URL.")
+        elif not backend_ok:
+            st.error("Backend is offline. Please start the FastAPI server first.")
+        else:
+            with st.spinner("⏳ Downloading audio, transcribing with Whisper, and generating embeddings... This may take a few minutes."):
+                try:
+                    result = send_process_video(video_url.strip())
+                    num_chunks = result.get("num_chunks", 0)
+                    transcript_text = result.get("transcript", "")
+
+                    st.session_state.transcript_ready = True
+                    st.session_state.last_transcript = transcript_text
+
+                    st.markdown(
+                        f'<div class="success-box">✅ Video transcribed and processed into <strong>{num_chunks}</strong> '
+                        f'chunks! Head to the <strong>💬 Ask Questions</strong> tab.</div>',
+                        unsafe_allow_html=True,
+                    )
+
+                    # Show transcript
+                    if transcript_text:
+                        st.markdown("#### 📄 Generated Transcript")
+                        st.markdown(
+                            f'<div class="transcript-box">{transcript_text}</div>',
+                            unsafe_allow_html=True,
+                        )
+
+                        # Download button
+                        st.download_button(
+                            label="📥 Download Transcript",
+                            data=transcript_text,
+                            file_name="transcript.txt",
+                            mime="text/plain",
+                            use_container_width=True,
+                        )
+
+                except requests.HTTPError as e:
+                    detail = ""
+                    try:
+                        detail = e.response.json().get("detail", "")
+                    except Exception:
+                        pass
+                    st.error(f"❌ Backend error: {detail or e}")
+                except requests.ConnectionError:
+                    st.error("Cannot reach backend. Is the FastAPI server running?")
+                except requests.Timeout:
+                    st.error("⏰ Request timed out. The video might be too long. Try a shorter video.")
+
+# ---- Tab 3: Ask Questions ----
+with tab_chat:
+    if not st.session_state.transcript_ready:
+        st.info("👈 Please process a transcript or video first using one of the other tabs.")
+    else:
+        # Display chat history
+        for msg in st.session_state.messages:
+            with st.chat_message(msg["role"]):
+                st.markdown(msg["content"])
+                if "context" in msg:
+                    with st.expander("📎 View Retrieved Context"):
+                        for i, res in enumerate(msg["context"], 1):
+                            st.write(f"**Chunk {i} (Score: {res['score']:.4f})**\n> {res['text']}")
+
+        # Chat input
+        if query := st.chat_input("Ask a question about the transcript..."):
+            # Show user message
+            st.session_state.messages.append({"role": "user", "content": query})
+            with st.chat_message("user"):
+                st.markdown(query)
+
+            # Retrieve & answer
+            with st.chat_message("assistant"):
+                # Step 1: Retrieve relevant chunks from backend
+                with st.spinner("🔍 Retrieving relevant context..."):
+                    try:
+                        top_results = send_retrieve(query, top_k=3)
+                    except Exception as e:
+                        st.error(f"Retrieval failed: {e}")
+                        top_results = []
+
+                if not top_results:
+                    st.warning("No relevant context found in the transcript.")
+                    context_texts = []
+                else:
+                    context_texts = [res["text"] for res in top_results]
+
+                combined_context = "\n\n".join(context_texts)
+
+                # Step 2: Query Groq LLM (stays in frontend)
+                if not st.session_state.api_key_valid or not combined_context:
+                    if combined_context:
+                        st.warning("API key not set. Below is the retrieved context only:")
+                        for res in top_results:
+                            st.info(res["text"])
+                else:
+                    with st.spinner("🧠 Generating answer with Groq LLM..."):
+                        client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
+                        prompt = f"""You are a helpful assistant. Answer the question ONLY using the provided context. If the answer is not in the context, say 'I don't know'.
+
+Context:
+{combined_context}
+
+Question:
+{query}
+
+Answer clearly and concisely."""
+
+                        try:
+                            chat_completion = client.chat.completions.create(
+                                messages=[
+                                    {"role": "system", "content": "You are a precise and helpful assistant."},
+                                    {"role": "user", "content": prompt},
+                                ],
+                                model="openai/gpt-oss-120b",
+                            )
+                            answer = chat_completion.choices[0].message.content
+                            st.markdown(answer)
+
+                            # Save to history
+                            st.session_state.messages.append({
+                                "role": "assistant",
+                                "content": answer,
+                                "context": top_results,
+                            })
+
+                            with st.expander("📎 View Retrieved Context"):
+                                for i, res in enumerate(top_results, 1):
+                                    st.write(f"**Chunk {i} (Score: {res['score']:.4f})**\n> {res['text']}")
+
+                        except Exception as e:
+                            st.error(f"Error communicating with Groq API: {e}")
