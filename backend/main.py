@@ -134,3 +134,18 @@ async def health_check():
         embeddings_loaded=embedder is not None,
         num_chunks_stored=len(stored_data),
     )
+
+
+@app.post("/process-text", response_model=ProcessResponse)
+async def process_text(request: TextRequest):
+    """
+    Process pasted transcript text.
+    Chunks the text, generates embeddings, and stores them for retrieval.
+    """
+    try:
+        num_chunks = process_text_pipeline(request.text)
+        return ProcessResponse(status="processed", num_chunks=num_chunks)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Processing failed: {e}")
