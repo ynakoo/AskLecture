@@ -2,7 +2,7 @@ import numpy as np
 from sklearn.metrics.pairwise import cosine_similarity
 
 def get_top_k(query_embedding: np.ndarray, stored_data: list[dict], top_k: int = 3) -> list[dict]:
-     """
+    """
     Computes cosine similarity between the query embedding and all stored chunk embeddings.
     Returns the top_k most similar chunks.
     
@@ -16,7 +16,7 @@ def get_top_k(query_embedding: np.ndarray, stored_data: list[dict], top_k: int =
     """
     if not stored_data:
         return []
-
+        
     # Extract all embeddings into a 2D numpy array
     chunk_embeddings = np.array([item["embedding"] for item in stored_data])
     
@@ -25,7 +25,7 @@ def get_top_k(query_embedding: np.ndarray, stored_data: list[dict], top_k: int =
     
     # Compute similarity: returns shape (1, num_chunks)
     similarities = cosine_similarity(query_vec, chunk_embeddings)[0]
-
+    
     # Get indices of the top-k highest similarity scores (argsort returns ascending)
     # We take the last `top_k` and reverse the array to get descending order
     top_indices = np.argsort(similarities)[::-1][:top_k]
