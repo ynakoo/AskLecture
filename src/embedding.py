@@ -42,3 +42,7 @@ class TranscriptEmbedder:
             })
             
         return stored_data
+    def embed_query(self, query: str):
+        """Creates an embedding for a single user query."""
+        # encode() returns a 2D array if list is provided, take the first item
+        return self.model.encode([query])[0]
