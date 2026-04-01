@@ -149,3 +149,46 @@ async def process_text(request: TextRequest):
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Processing failed: {e}")
+
+
+@app.post("/process-video", response_model=ProcessResponse)
+async def process_video(request: VideoRequest):
+    """
+    Process a video URL:
+    1. Download audio using yt-dlp
+    2. Transcribe with local Whisper model
+    3. Feed transcript into the same text processing pipeline
+    """
+    audio_path = None
+
+    try:
+        # Step 1: Download audio
+        print(f"[Backend] Downloading audio from: {request.video_url}")
+        audio_path = download_audio(request.video_url)
+        print(f"[Backend] Audio saved to: {audio_path}")
+
+        # Step 2: Transcribe with Whisper
+        print(f"[Backend] Transcribing with Whisper ({WHISPER_MODEL_SIZE})...")
+        transcript = transcribe_with_whisper(audio_path, model_size=WHISPER_MODEL_SIZE)
+        print(f"[Backend] Transcription complete. Length: {len(transcript)} chars.")
+
+        # Step 3: Process through shared pipeline (same as /process-text)
+        num_chunks = process_text_pipeline(transcript)
+
+        return ProcessResponse(
+            status="processed",
+            num_chunks=num_chunks,
+            transcript=transcript,
+        )
+
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except RuntimeError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Video processing failed: {e}")
+    finally:
+        # Step 4: Always clean up audio file
+        if audio_path:
+            cleanup(audio_path)
+            print(f"[Backend] Cleaned up temp audio file.")
