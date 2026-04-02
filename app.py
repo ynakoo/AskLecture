@@ -26,7 +26,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # Application Heading
-st.title("🎥 Semantic Video Transcript Search")
+st.title("🎥 AskLecture")
 st.markdown("**Find answers directly from video transcripts using Groq LLaMA 3 & local embeddings.**")
 
 # Session State Initialization
