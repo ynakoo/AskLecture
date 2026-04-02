@@ -5,7 +5,7 @@ from src.embedding import TranscriptEmbedder
 from src.retrieval import get_top_k
 
 # Set page config
-st.set_page_config(page_title="Semantic Video Search", page_icon="🎥", layout="wide")
+st.set_page_config(page_title="🎥 AskLecture", page_icon="🎥", layout="wide")
 
 # Custom CSS for aesthetics
 st.markdown("""
@@ -148,4 +148,7 @@ Answer clearly and concisely."""
                                     st.write(f"**Chunk {i} (Score: {res['score']:.4f})**\n> {res['text']}")
                                     
                         except Exception as e:
-                            st.error(f"Error communicating with Groq API: {e}")
+                            if "401" in str(e):
+                                st.error("❌ **Invalid API Key** (401 Error). Please check your **GROQ_API_KEY** in your Dashboard/Environment. It might have been revoked.")
+                            else:
+                                st.error(f"Error communicating with Groq API: {e}")
