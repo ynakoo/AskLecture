@@ -163,17 +163,17 @@ with tab_chat:
         # Chat Input at the Top
         with st.form("chat_form", clear_on_submit=True):
             query = st.text_input("💬 Ask a question about the video transcript...", placeholder="Type your question and press Enter...", disabled=st.session_state.processing)
-            submit_button = st.form_submit_button("Ask", disabled=st.session_state.processing)
+            submit_button = st.form_submit_button("Ask", disabled=st.session_state.processing, on_click=start_processing)
             
         if submit_button and query.strip():
-            st.session_state.processing = True
             user_query = query.strip()
             # Append User Question
             st.session_state.messages.append({"role": "user", "content": user_query})
             
             # Retrieve Context
-            query_emb = st.session_state.embedder.embed_query(user_query)
-            top_results = get_top_k(query_emb, st.session_state.stored_data, top_k=1)
+            with st.spinner("🤔 Searching for relevant context..."):
+                query_emb = st.session_state.embedder.embed_query(user_query)
+                top_results = get_top_k(query_emb, st.session_state.stored_data, top_k=1)
             
             if not top_results:
                 st.session_state.messages.append({"role": "assistant", "content": "I couldn't find any relevant context in the transcript to answer that."})
@@ -186,8 +186,9 @@ with tab_chat:
                     st.session_state.messages.append({"role": "assistant", "content": "Groq API key not set. Here is the relevant context found:\n\n" + combined_context})
                 else:
                     try:
-                        client = Groq(api_key=detected_key)
-                        prompt = f"""You are a helpful assistant. Answer the question ONLY using the provided context. If the answer is not in the context, say 'I don't know'.
+                        with st.spinner("🧠 Generating answer..."):
+                            client = Groq(api_key=detected_key)
+                            prompt = f"""You are a helpful assistant. Answer the question ONLY using the provided context. If the answer is not in the context, say 'I don't know'.
 
 Context:
 {combined_context}
@@ -197,15 +198,15 @@ Question:
 
 Answer clearly and concisely."""
 
-                        chat_completion = client.chat.completions.create(
-                            messages=[
-                                {"role": "system", "content": "You are a precise and helpful assistant."},
-                                {"role": "user", "content": prompt}
-                            ],
-                            model="openai/gpt-oss-120b",
-                        )
-                        answer = chat_completion.choices[0].message.content
-                        st.session_state.messages.append({"role": "assistant", "content": answer, "context": top_results})
+                            chat_completion = client.chat.completions.create(
+                                messages=[
+                                    {"role": "system", "content": "You are a precise and helpful assistant."},
+                                    {"role": "user", "content": prompt}
+                                ],
+                                model="openai/gpt-oss-120b",
+                            )
+                            answer = chat_completion.choices[0].message.content
+                            st.session_state.messages.append({"role": "assistant", "content": answer, "context": top_results})
                     except Exception as e:
                         error_msg = f"❌ Error communicating with API: {str(e)}"
                         st.session_state.messages.append({"role": "assistant", "content": error_msg})
