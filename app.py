@@ -35,7 +35,7 @@ st.markdown("""
 
 # Application Heading
 st.title("🎓 AskLecture")
-st.markdown("**Find answers directly from video transcripts using Groq LLaMA 3 & local embeddings.**")
+st.markdown("**Find answers directly from audio transcripts using Groq LLaMA 3 & local embeddings.**")
 
 # Session State Initialization
 if "embedder" not in st.session_state:
@@ -106,7 +106,7 @@ with tab_upload:
     # Audio Uploader (Top of section as requested)
     # Audio Uploader
     audio_file = st.file_uploader(
-        "Option A: Upload Audio (mp3, wav, m4a)", 
+        # "Option A: Upload Audio (mp3, wav, m4a)", 
         type=["mp3", "wav", "m4a"],
         key=f"audio_uploader_{st.session_state.uploader_key}"
     )
@@ -121,11 +121,11 @@ with tab_upload:
                 st.session_state.processing = False
                 st.rerun()
     
-    st.markdown("--- OR ---")
+    # st.markdown("--- OR ---")
     
     # Text Input (Option B & Transcription target)
     transcript_text = st.text_area(
-        "Option B: Paste or Review Transcript Text", 
+        # "Option B: Paste or Review Transcript Text", 
         height=200, 
         placeholder="Paste your video transcript here or transcribe audio above...",
         value=st.session_state.full_transcript
