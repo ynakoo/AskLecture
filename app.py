@@ -118,6 +118,8 @@ if "transcript_ready" not in st.session_state:
     st.session_state.transcript_ready = False
 if "last_transcript" not in st.session_state:
     st.session_state.last_transcript = None
+if "processing" not in st.session_state:
+    st.session_state.processing = False
 
 # ---------------------------------------------------------------------------
 # API Key Setup
@@ -217,15 +219,18 @@ with st.sidebar:
     st.divider()
 
     # Clear data button
-    if st.button("🗑️ Clear All Data", use_container_width=True):
+    if st.button("🗑️ Clear All Data", use_container_width=True, disabled=st.session_state.processing):
+        st.session_state.processing = True
         try:
             requests.post(f"{BACKEND_URL}/clear", timeout=5)
             st.session_state.messages = []
             st.session_state.transcript_ready = False
             st.session_state.last_transcript = None
+            st.session_state.processing = False
             st.success("Data cleared.")
             st.rerun()
         except Exception:
+            st.session_state.processing = False
             st.error("Could not clear backend data.")
 
 # ---------------------------------------------------------------------------
@@ -245,10 +250,13 @@ with tab_text:
         label_visibility="collapsed",
     )
 
-    if st.button("⚡ Process & Embed Transcript", use_container_width=True, type="primary", key="btn_process_text"):
+    if st.button("⚡ Process & Embed Transcript", use_container_width=True, type="primary", key="btn_process_text", disabled=st.session_state.processing):
+        st.session_state.processing = True
         if not transcript.strip():
+            st.session_state.processing = False
             st.error("Please paste a valid transcript before processing.")
         elif not backend_ok:
+            st.session_state.processing = False
             st.error("Backend is offline. Please start the FastAPI server first.")
         else:
             with st.spinner("Sending transcript to backend for chunking & embedding..."):
@@ -257,12 +265,14 @@ with tab_text:
                     num_chunks = result.get("num_chunks", 0)
                     st.session_state.transcript_ready = True
                     st.session_state.last_transcript = transcript.strip()
+                    st.session_state.processing = False
                     st.markdown(
                         f'<div class="success-box">✅ Successfully processed <strong>{num_chunks}</strong> '
                         f'chunks into memory! Head to the <strong>💬 Ask Questions</strong> tab.</div>',
                         unsafe_allow_html=True,
                     )
                 except requests.HTTPError as e:
+                    st.session_state.processing = False
                     detail = ""
                     try:
                         detail = e.response.json().get("detail", "")
@@ -270,6 +280,7 @@ with tab_text:
                         pass
                     st.error(f"Backend error: {detail or e}")
                 except requests.ConnectionError:
+                    st.session_state.processing = False
                     st.error("Cannot reach backend. Is the FastAPI server running?")
 
 # ---- Tab 2: Video URL ----
@@ -283,10 +294,13 @@ with tab_video:
         label_visibility="collapsed",
     )
 
-    if st.button("🎬 Convert & Process Video", use_container_width=True, type="primary", key="btn_process_video"):
+    if st.button("🎬 Convert & Process Video", use_container_width=True, type="primary", key="btn_process_video", disabled=st.session_state.processing):
+        st.session_state.processing = True
         if not video_url.strip():
+            st.session_state.processing = False
             st.error("Please enter a valid video URL.")
         elif not backend_ok:
+            st.session_state.processing = False
             st.error("Backend is offline. Please start the FastAPI server first.")
         else:
             with st.spinner("⏳ Downloading audio, transcribing with Whisper, and generating embeddings... This may take a few minutes."):
@@ -297,6 +311,7 @@ with tab_video:
 
                     st.session_state.transcript_ready = True
                     st.session_state.last_transcript = transcript_text
+                    st.session_state.processing = False
 
                     st.markdown(
                         f'<div class="success-box">✅ Video transcribed and processed into <strong>{num_chunks}</strong> '
@@ -322,6 +337,7 @@ with tab_video:
                         )
 
                 except requests.HTTPError as e:
+                    st.session_state.processing = False
                     detail = ""
                     try:
                         detail = e.response.json().get("detail", "")
@@ -329,8 +345,10 @@ with tab_video:
                         pass
                     st.error(f"❌ Backend error: {detail or e}")
                 except requests.ConnectionError:
+                    st.session_state.processing = False
                     st.error("Cannot reach backend. Is the FastAPI server running?")
                 except requests.Timeout:
+                    st.session_state.processing = False
                     st.error("⏰ Request timed out. The video might be too long. Try a shorter video.")
 
 # ---- Tab 3: Ask Questions ----
