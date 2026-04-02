@@ -3,3 +3,5 @@ scikit-learn
 numpy
 groq
 streamlit
+assemblyai
+python-dotenv
