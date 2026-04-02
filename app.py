@@ -39,7 +39,7 @@ if "api_key_valid" not in st.session_state:
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-# Handle API Key Safely
+# Handle API Key Safely (Silent)
 detected_key = os.environ.get("GROQ_API_KEY")
 if not detected_key:
     try:
@@ -47,18 +47,11 @@ if not detected_key:
     except (FileNotFoundError, KeyError, RuntimeError):
         detected_key = None
 
+st.session_state.api_key_valid = True if detected_key else False
+
 # Sidebar for App Info & Configuration
 with st.sidebar:
     st.header("⚙️ Configuration")
-    
-    if detected_key:
-        st.session_state.api_key_valid = True
-        st.success("✅ API Key Loaded")
-    else:
-        st.session_state.api_key_valid = False
-        st.error("❌ API Key Missing")
-        st.info("Set **GROQ_API_KEY** in your Dashboard/Environment.")
-        
     st.divider()
     st.markdown("""
     ### About
