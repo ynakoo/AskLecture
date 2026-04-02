@@ -2,9 +2,3 @@ __pycache__/
 .DS_Store
 .venv/
 env/
-.env
-.streamlit/secrets.toml
-*.wav
-*.mp3
-*.m4a
-temp_audio/

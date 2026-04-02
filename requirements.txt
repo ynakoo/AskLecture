@@ -3,9 +3,3 @@ scikit-learn
 numpy
 groq
 streamlit
-fastapi
-uvicorn[standard]
-yt-dlp
-openai-whisper
-requests
-python-dotenv
