@@ -39,29 +39,25 @@ if "api_key_valid" not in st.session_state:
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-# Handle API Key
-env_key = os.environ.get("GROQ_API_KEY") or st.secrets.get("GROQ_API_KEY")
+# Handle API Key Safely
+detected_key = os.environ.get("GROQ_API_KEY")
+if not detected_key:
+    try:
+        detected_key = st.secrets.get("GROQ_API_KEY")
+    except (FileNotFoundError, KeyError, RuntimeError):
+        detected_key = None
 
 # Sidebar for App Info & Configuration
 with st.sidebar:
     st.header("⚙️ Configuration")
     
-    # Allow user to input key if not in environment (don't pre-fill it)
-    user_key = st.text_input("Override Groq API Key:", type="password", help="Leave blank to use the key from Streamlit Secrets/Environment.")
-    
-    # Final API key logic
-    final_api_key = user_key if user_key else env_key
-    
-    if final_api_key:
-        os.environ["GROQ_API_KEY"] = final_api_key
+    if detected_key:
         st.session_state.api_key_valid = True
-        if user_key:
-            st.success("Using manual API key override.")
-        else:
-            st.info("Using API key from Secrets/Environment.")
+        st.success("✅ API Key Loaded")
     else:
         st.session_state.api_key_valid = False
-        st.warning("Please enter your Groq API key to enable AI answers.")
+        st.error("❌ API Key Missing")
+        st.info("Set **GROQ_API_KEY** in your Dashboard/Environment.")
         
     st.divider()
     st.markdown("""
@@ -129,7 +125,7 @@ with tab_chat:
                             st.info(res['text'])
                 else:
                     with st.spinner("Generating answer..."):
-                        client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
+                        client = Groq(api_key=detected_key)
                         prompt = f"""You are a helpful assistant. Answer the question ONLY using the provided context. If the answer is not in the context, say 'I don't know'.
 
 Context:
