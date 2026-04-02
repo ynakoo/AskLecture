@@ -40,17 +40,25 @@ if "messages" not in st.session_state:
     st.session_state.messages = []
 
 # Handle API Key
-api_key = os.environ.get("GROQ_API_KEY") or st.secrets.get("GROQ_API_KEY")
+env_key = os.environ.get("GROQ_API_KEY") or st.secrets.get("GROQ_API_KEY")
 
 # Sidebar for App Info & Configuration
 with st.sidebar:
     st.header("⚙️ Configuration")
     
-    # Allow user to input key if not in environment
-    user_key = st.text_input("Enter Groq API Key:", value=api_key if api_key else "", type="password")
-    if user_key:
-        os.environ["GROQ_API_KEY"] = user_key
+    # Allow user to input key if not in environment (don't pre-fill it)
+    user_key = st.text_input("Override Groq API Key:", type="password", help="Leave blank to use the key from Streamlit Secrets/Environment.")
+    
+    # Final API key logic
+    final_api_key = user_key if user_key else env_key
+    
+    if final_api_key:
+        os.environ["GROQ_API_KEY"] = final_api_key
         st.session_state.api_key_valid = True
+        if user_key:
+            st.success("Using manual API key override.")
+        else:
+            st.info("Using API key from Secrets/Environment.")
     else:
         st.session_state.api_key_valid = False
         st.warning("Please enter your Groq API key to enable AI answers.")
