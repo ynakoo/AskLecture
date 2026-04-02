@@ -6,7 +6,12 @@ from src.retrieval import get_top_k
 
 def main():
     # 1. Verification of the API Key
-    api_key = "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"
+    api_key = os.environ.get("GROQ_API_KEY")
+    if not api_key:
+        print("Error: GROQ_API_KEY environment variable not set.")
+        print("Please set it: export GROQ_API_KEY='your_new_key_here'")
+        sys.exit(1)
+        
     client = Groq(api_key=api_key)
     
     # 2. Embedding Model Setup
