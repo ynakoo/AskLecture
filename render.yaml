@@ -9,7 +9,7 @@ services:
     dockerfilePath: Dockerfile
     # Override the command for the backend
     dockerCommand: uvicorn backend.main:app --host 0.0.0.0 --port 8000
-    plan: starter # Starter plan is recommended for Whisper RAM usage
+    plan: free # free plan for Whisper RAM usage
     region: ohio
     envVars:
       - key: PORT
