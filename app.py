@@ -13,7 +13,7 @@ load_dotenv()
 aai.settings.api_key = os.getenv("ASSEMBLYAI_API_KEY")
 
 # Set page config
-st.set_page_config(page_title="🎥 AskLecture", page_icon="🎥", layout="wide")
+st.set_page_config(page_title="AskLecture", page_icon="🎓", layout="wide")
 
 # Custom CSS for aesthetics
 st.markdown("""
@@ -34,7 +34,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # Application Heading
-st.title("🎥 AskLecture")
+st.title("🎓 AskLecture")
 st.markdown("**Find answers directly from video transcripts using Groq LLaMA 3 & local embeddings.**")
 
 # Session State Initialization
