@@ -1,6 +1,6 @@
 # 🎥 AskLecture — Semantic Video Transcript Search
 
-> Ask questions about any lecture or video transcript and get precise, AI-powered answers instantly.
+> Ask questions about any lecture or video transcript, upload audio for transcription, and get precise, AI-powered answers instantly.
 
 [![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://asklecture-s2npayyxbeks7nr5fcdfqr.streamlit.app/)
 ![Python](https://img.shields.io/badge/Python-3.10+-blue?logo=python&logoColor=white)
@@ -15,7 +15,7 @@
 
 ## ✨ Features
 
-- 📝 **Paste any transcript** — no file upload needed, just paste and go
+- 📝 **Paste any transcript or upload audio** — paste text directly or upload audio files for automatic transcription via AssemblyAI
 - 🔍 **Semantic search** — finds the most relevant chunks using cosine similarity
 - 🤖 **AI-powered answers** — generates concise answers using Groq's LLM (GPT-OSS-120B)
 - 💬 **Chat interface** — conversational UI with full chat history
@@ -43,8 +43,8 @@ AskLecture/
 
 ```
 ┌─────────────┐     ┌──────────────┐     ┌───────────────┐     ┌─────────────┐
-│  Paste       │ ──▶ │  Chunk Text  │ ──▶ │  Generate     │ ──▶ │  Store in   │
-│  Transcript  │     │  (3 sent.)   │     │  Embeddings   │     │  Memory     │
+│  Paste Text /│ ──▶ │  Chunk Text  │ ──▶ │  Generate     │ ──▶ │  Store in   │
+│  Upload Audio│     │  (3 sent.)   │     │  Embeddings   │     │  Memory     │
 └─────────────┘     └──────────────┘     └───────────────┘     └─────────────┘
                                                                       │
 ┌─────────────┐     ┌──────────────┐     ┌───────────────┐           │
@@ -104,6 +104,7 @@ The app is deployed on Streamlit Community Cloud:
 | Component       | Technology                          |
 | --------------- | ----------------------------------- |
 | **Frontend**    | Streamlit                           |
+| **Transcription**| AssemblyAI API                      |
 | **Embeddings**  | SentenceTransformers (all-MiniLM-L6-v2) |
 | **Similarity**  | scikit-learn (Cosine Similarity)    |
 | **LLM**        | Groq API (GPT-OSS-120B)            |
@@ -114,7 +115,7 @@ The app is deployed on Streamlit Community Cloud:
 ## 📖 Usage
 
 1. **Open the app** in your browser
-2. **Go to the "Provide Transcript" tab** and paste your lecture/video transcript
+2. **Go to the "Provide Transcript" tab** and paste your transcript or upload an audio file for automatic transcription
 3. **Click "Process & Embed Transcript"** to chunk and embed the text
 4. **Switch to the "Ask Questions" tab** and start chatting
 5. **Expand "View Retrieved Context"** to see which chunks were used
